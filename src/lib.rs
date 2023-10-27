@@ -7,6 +7,7 @@ use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 
 use rand_xoshiro::SplitMix64 as TheRng;
+use rayon::prelude::{IntoParallelIterator, ParallelIterator};
 
 mod similarity;
 
@@ -239,31 +240,13 @@ impl SliceNShuffle {
 
         let splits: Vec<_> = (0..(params.total_splits)).map(gen_view).collect();
 
-        // for i in 0..(params.total_splits) {
-        //     for j in 0..(params.total_splits) {
-        //         let res = similarity::compute_border_abs_diff(
-        //             &*splits[i],
-        //             &*splits[j],
-        //             similarity::Direction::Right,
-        //         );
-        //         println!("{} vs {} (Right): {}", i, j, res);
-
-        //         let res = similarity::compute_border_abs_diff(
-        //             &*splits[i],
-        //             &*splits[j],
-        //             similarity::Direction::Down,
-        //         );
-        //         println!("{} vs {} (Down): {}", i, j, res);
-        //     }
-        // }
-
         let x_split = self.x_split as usize;
 
         let nearest_pair = (0..(params.total_splits))
+            .into_par_iter()
             .map(|start| {
                 let mut splits_to_use: Vec<_> = splits.iter().map(Option::Some).collect();
                 let mut indices: Vec<_> = Vec::with_capacity(params.total_splits);
-                // println!("start: {}", start);
                 for y in 0..(self.y_split as usize) {
                     for x in 0..(self.x_split as usize) {
                         if x == 0 && y == 0 {
@@ -271,27 +254,18 @@ impl SliceNShuffle {
                             indices.push(start);
                             splits_to_use[start] = None;
                         } else if x == 0 {
-                            // compare with the upper split
-                            let target_split = splits[(y - 1) * x_split];
-
                             let nearest_idx = splits_to_use
                                 .iter()
                                 .enumerate()
                                 .filter(|(_, o)| o.is_some())
                                 .map(|(idx, opt)| (idx, opt.unwrap()))
-                                .min_by_key(|(i, split)| {
-                                    let res = similarity::compute_border_abs_diff(
-                                        &*target_split,
+                                .min_by_key(|(_, split)| {
+                                    // compare with the upper split
+                                    similarity::compute_border_abs_diff(
+                                        &*splits[indices[(y - 1) * x_split]],
                                         *split,
                                         similarity::Direction::Down,
-                                    );
-                                    // println!(
-                                    //     "{} vs {} (Down): {}",
-                                    //     indices[(y - 1) * x_split],
-                                    //     i,
-                                    //     res
-                                    // );
-                                    res
+                                    )
                                 })
                                 .unwrap()
                                 .0;
@@ -300,27 +274,18 @@ impl SliceNShuffle {
                             indices.push(nearest_idx);
                             splits_to_use[nearest_idx] = None;
                         } else {
-                            // compare with the left split
-                            let target_split = splits[(x - 1) + y * x_split];
-
                             let nearest_idx = splits_to_use
                                 .iter()
                                 .enumerate()
                                 .filter(|(_, o)| o.is_some())
                                 .map(|(idx, opt)| (idx, opt.unwrap()))
-                                .min_by_key(|(i, split)| {
-                                    let res = similarity::compute_border_abs_diff(
-                                        &*target_split,
+                                .min_by_key(|(_, split)| {
+                                    // compare with the left split
+                                    similarity::compute_border_abs_diff(
+                                        &*splits[indices[(x - 1) + y * x_split]],
                                         *split,
                                         similarity::Direction::Right,
-                                    );
-                                    // println!(
-                                    //     "{} vs {} (Right): {}",
-                                    //     indices[(x - 1) + y * x_split],
-                                    //     i,
-                                    //     res
-                                    // );
-                                    res
+                                    )
                                 })
                                 .unwrap()
                                 .0;
@@ -333,12 +298,6 @@ impl SliceNShuffle {
                 }
 
                 let abs_diff = self.compute_total_abs_diff(img, &indices, &params);
-
-                // println!("{:?} ({})", indices, abs_diff);
-                // self.arrange_splits(img, &params, &indices)
-                //     .unwrap()
-                //     .save(format!("dbg/{start}.png"))
-                //     .unwrap();
 
                 (indices, abs_diff)
             })

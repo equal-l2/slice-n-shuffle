@@ -398,6 +398,7 @@ dependencies = [
  "image",
  "rand",
  "rand_xoshiro",
+ "rayon",
  "thiserror",
 ]
 

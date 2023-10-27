@@ -46,6 +46,8 @@ where
         ),
     };
 
+    assert!(my_border.dimensions() == their_border.dimensions());
+
     std::iter::zip(my_border.pixels(), their_border.pixels())
         .map(|(a, b)| {
             let my_pixel = a.2.channels();

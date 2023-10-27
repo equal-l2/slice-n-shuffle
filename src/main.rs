@@ -89,11 +89,11 @@ fn encode(args: Args) {
     let input = args.input;
 
     let output = determine_output_path(&input, args.output, "_encoded");
-    if output.is_implicit() && output.as_ref().try_exists().unwrap() {
-        eprintln!("\"{}\" already exists", output);
-        eprintln!("To overwrite the file, set output path");
-        return;
-    }
+    // if output.is_implicit() && output.as_ref().try_exists().unwrap() {
+    //     eprintln!("\"{}\" already exists", output);
+    //     eprintln!("To overwrite the file, set output path");
+    //     return;
+    // }
 
     eprintln!("From: \"{}\"", input.display());
     eprintln!("To: \"{}\"", output);
@@ -108,11 +108,11 @@ fn decode(args: Args) {
     let input = args.input;
 
     let output = determine_output_path(&input, args.output, "_decoded");
-    if output.is_implicit() && output.as_ref().try_exists().unwrap() {
-        eprintln!("\"{}\" already exists", output);
-        eprintln!("To overwrite the file, set output path");
-        return;
-    }
+    // if output.is_implicit() && output.as_ref().try_exists().unwrap() {
+    //     eprintln!("\"{}\" already exists", output);
+    //     eprintln!("To overwrite the file, set output path");
+    //     return;
+    // }
 
     eprintln!("From: \"{}\"", input.display());
     eprintln!("To: \"{}\"", output);
