@@ -85,29 +85,49 @@ fn determine_output_path<P: AsRef<Path>>(
     }
 }
 
+fn encode(args: Args) {
+    let input = args.input;
+
+    let output = determine_output_path(&input, args.output, "_encoded");
+    if output.is_implicit() && output.as_ref().try_exists().unwrap() {
+        eprintln!("\"{}\" already exists", output);
+        eprintln!("To overwrite the file, set output path");
+        return;
+    }
+
+    eprintln!("From: \"{}\"", input.display());
+    eprintln!("To: \"{}\"", output);
+
+    let sns = slice_n_shuffle::SliceNShuffle::new(args.x_split, args.y_split);
+    if let Err(e) = sns.encode_from_path_and_save(input, output.as_ref()) {
+        eprintln!("Error: {e}")
+    }
+}
+
+fn decode(args: Args) {
+    let input = args.input;
+
+    let output = determine_output_path(&input, args.output, "_decoded");
+    if output.is_implicit() && output.as_ref().try_exists().unwrap() {
+        eprintln!("\"{}\" already exists", output);
+        eprintln!("To overwrite the file, set output path");
+        return;
+    }
+
+    eprintln!("From: \"{}\"", input.display());
+    eprintln!("To: \"{}\"", output);
+
+    let sns = slice_n_shuffle::SliceNShuffle::new(args.x_split, args.y_split);
+    if let Err(e) = sns.decode_from_path_and_save(input, output.as_ref()) {
+        eprintln!("Error: {e}")
+    }
+}
+
 fn main() {
     let app = App::parse();
 
     match app.command {
-        Commands::Encode(args) => {
-            let input = args.input;
-
-            let output = determine_output_path(&input, args.output, "_snsed");
-            if output.is_implicit() && output.as_ref().try_exists().unwrap() {
-                eprintln!("\"{}\" already exists", output);
-                eprintln!("To overwrite the file, set output path");
-            }
-
-            eprintln!("From: \"{}\"", input.display());
-            eprintln!("To: \"{}\"", output);
-
-            let sns = slice_n_shuffle::SliceNShuffle::new(args.x_split, args.y_split);
-            if let Err(e) = sns.read_path_and_save(input, output.as_ref()) {
-                eprintln!("Error: {e}")
-            }
-        }
-        Commands::Decode(_args) => {
-            todo!();
-        }
+        Commands::Encode(args) => encode(args),
+        Commands::Decode(args) => decode(args),
     }
 }
