@@ -31,14 +31,9 @@ enum OutputPath {
     Explicit(PathBuf),
 }
 
-impl OutputPath {
-    fn is_implicit(&self) -> bool {
-        matches!(self, OutputPath::Implicit(_))
-    }
-}
-
-impl AsRef<Path> for OutputPath {
-    fn as_ref(&self) -> &Path {
+impl std::ops::Deref for OutputPath {
+    type Target = Path;
+    fn deref(&self) -> &Path {
         match self {
             OutputPath::Implicit(path) => path,
             OutputPath::Explicit(path) => path,
@@ -89,17 +84,11 @@ fn encode(args: Args) {
     let input = args.input;
 
     let output = determine_output_path(&input, args.output, "_encoded");
-    // if output.is_implicit() && output.as_ref().try_exists().unwrap() {
-    //     eprintln!("\"{}\" already exists", output);
-    //     eprintln!("To overwrite the file, set output path");
-    //     return;
-    // }
 
     eprintln!("From: \"{}\"", input.display());
     eprintln!("To: \"{}\"", output);
 
-    let sns = slice_n_shuffle::SliceNShuffle::new(args.x_split, args.y_split);
-    if let Err(e) = sns.encode_from_path_and_save(input, output.as_ref()) {
+    if let Err(e) = slice_n_shuffle::encode_with_path(&input, &output, args.x_split, args.y_split) {
         eprintln!("Error: {e}")
     }
 }
@@ -108,17 +97,11 @@ fn decode(args: Args) {
     let input = args.input;
 
     let output = determine_output_path(&input, args.output, "_decoded");
-    // if output.is_implicit() && output.as_ref().try_exists().unwrap() {
-    //     eprintln!("\"{}\" already exists", output);
-    //     eprintln!("To overwrite the file, set output path");
-    //     return;
-    // }
 
     eprintln!("From: \"{}\"", input.display());
     eprintln!("To: \"{}\"", output);
 
-    let sns = slice_n_shuffle::SliceNShuffle::new(args.x_split, args.y_split);
-    if let Err(e) = sns.decode_from_path_and_save(input, output.as_ref()) {
+    if let Err(e) = slice_n_shuffle::decode_with_path(&input, &output, args.x_split, args.y_split) {
         eprintln!("Error: {e}")
     }
 }
