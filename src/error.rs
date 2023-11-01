@@ -14,6 +14,8 @@ pub enum Error {
     Decode(image::ImageError),
     #[error("Failed to convert the image: {0}")]
     Convert(image::ImageError),
+    #[error("Failed to save the image in encoding: {0}")]
+    Encode(image::ImageError),
     #[error("Failed to save the image: {0}")]
     Save(image::ImageError),
 }

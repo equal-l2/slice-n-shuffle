@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Slice-n-Shuffle (and vice versa)</title>
+  </head>
+  <body>
+    <form onsubmit="event.preventDefault()">
+      <input
+        type="file"
+        id="file_input"
+        autocomplete="off"
+        accept="image/png,image/jpeg"
+      />
+      <br />
+      <label
+        >xsplit:
+        <select id="xsplit" autocomplete="off"></select
+      ></label>
+      <label
+        >ysplit:
+        <select id="ysplit" autocomplete="off"></select
+      ></label>
+      <button id="run">Run</button>
+    </form>
+
+    <img id="img" />
+    <script src="index.js" type="module"></script>
+  </body>
+  <style>
+    #img {
+      max-height: 80vh;
+      max-width: 90vw;
+    }
+
+    #file_input {
+      margin-bottom: 10px;
+    }
+
+    form {
+      margin: 20px;
+    }
+  </style>
+</html>

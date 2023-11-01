@@ -85,12 +85,20 @@ mod wasm_fn {
             .map(|i| i.to_rgba8())
     }
 
+    fn encode_to_png(img: image::RgbaImage) -> Result<Vec<u8>, super::Error> {
+        let mut buf = vec![];
+        let encoder = image::codecs::png::PngEncoder::new(&mut buf);
+        img.write_with_encoder(encoder)
+            .map_err(super::Error::Encode)?;
+        Ok(buf)
+    }
+
     #[wasm_bindgen]
     pub fn encode_image_buffer(buf: &[u8], x_split: u32, y_split: u32) -> Result<Vec<u8>, JsValue> {
         let (x_split, y_split) = convert_to_nonzero_u32(x_split, y_split)?;
         let img = decode_into_image(buf).map_err(Into::<JsValue>::into)?;
         let img_out = super::encode_image(&img, x_split, y_split).map_err(Into::<JsValue>::into)?;
-        Ok(img_out.into_raw())
+        encode_to_png(img_out).map_err(Into::<JsValue>::into)
     }
 
     #[wasm_bindgen]
@@ -98,7 +106,7 @@ mod wasm_fn {
         let (x_split, y_split) = convert_to_nonzero_u32(x_split, y_split)?;
         let img = decode_into_image(buf).map_err(Into::<JsValue>::into)?;
         let img_out = super::decode_image(&img, x_split, y_split).map_err(Into::<JsValue>::into)?;
-        Ok(img_out.into_raw())
+        encode_to_png(img_out).map_err(Into::<JsValue>::into)
     }
 }
 
