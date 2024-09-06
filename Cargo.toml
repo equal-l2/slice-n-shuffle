@@ -12,7 +12,13 @@ crate-type = ["cdylib", "rlib"]
 lto = true
 
 [dependencies]
-clap = { version = "4.4.7", default-features = false, features = [
+image = { version = "0.25.2", default-features = false, features = [
+    "png",
+    "jpeg",
+    "rayon",
+] }
+anyhow = { version = "1.0.86", default-features = false, features = ["std"] }
+clap = { version = "4.5.17", default-features = false, features = [
     "std",
     "derive",
     "color",
@@ -21,19 +27,15 @@ clap = { version = "4.4.7", default-features = false, features = [
     "error-context",
     "unicode",
 ] }
-getrandom = { version = "0.2.10", default-features = false, features = [
+getrandom = { version = "0.2.15", default-features = false, features = [
     "std",
     "rdrand",
 ] }
-image = { version = "0.24.7", default-features = false, features = [
-    "png",
-    "jpeg_rayon",
-] }
 rand = { version = "0.8.5", default-features = false }
 rand_xoshiro = { version = "0.6.0", default-features = false }
-rayon = { version = "1.8.0", default-features = false }
-serde-wasm-bindgen = { version = "0.6.1", default-features = false, optional = true }
-serde_with = { version = "3.4.0", default-features = false, features = [
+rayon = { version = "1.10.0", default-features = false }
+serde-wasm-bindgen = { version = "0.6.5", default-features = false, optional = true }
+serde_with = { version = "3.9.0", default-features = false, features = [
     "macros",
 ], optional = true }
 thiserror = { version = "1.0.50", default-features = false }

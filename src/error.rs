@@ -25,6 +25,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 #[cfg(feature = "js")]
 use wasm_bindgen::prelude::*;
 #[cfg(feature = "js")]
+#[allow(clippy::fallible_impl_from)]
 impl From<Error> for JsValue {
     fn from(e: Error) -> Self {
         serde_wasm_bindgen::to_value(&e).unwrap()

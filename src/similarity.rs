@@ -7,17 +7,6 @@ pub(crate) enum Direction {
     Right,
 }
 
-impl Direction {
-    pub fn opposite(&self) -> Self {
-        match self {
-            Self::Up => Self::Down,
-            Self::Down => Self::Up,
-            Self::Left => Self::Right,
-            Self::Right => Self::Left,
-        }
-    }
-}
-
 pub(crate) fn compute_border_abs_diff<T>(my_view: &T, their_view: &T, dir: Direction) -> u64
 where
     T: GenericImageView,
@@ -53,7 +42,7 @@ where
             let my_pixel = a.2.channels();
             let their_pixel = b.2.channels();
             std::iter::zip(my_pixel.iter(), their_pixel.iter())
-                .map(|(a, b)| (a.abs_diff(*b)) as u64)
+                .map(|(a, b)| (u64::from(a.abs_diff(*b))))
                 .sum::<u64>()
         })
         .sum::<u64>()
