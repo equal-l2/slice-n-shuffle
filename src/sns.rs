@@ -21,6 +21,76 @@ pub(crate) struct DimensionParams {
     sub_height: u32,
 }
 
+/// Border costs between every ordered pair of tiles, computed once per decode.
+///
+/// `right[a * n + b]` is the cost of placing tile `b` directly right of tile `a`,
+/// and `down[a * n + b]` is the cost of placing `b` directly below `a`.
+/// The matrices are not symmetric.
+struct BorderCosts {
+    n: usize,
+    right: Vec<u32>,
+    down: Vec<u32>,
+}
+
+impl BorderCosts {
+    fn new(img: &RgbaImage, sns: &SnsImpl, params: &DimensionParams) -> Self {
+        let n = sns.total_splits;
+        let x_split = sns.x_split as usize;
+        let tiles: Vec<_> = (0..n)
+            .map(|idx| {
+                let i = idx % x_split;
+                let j = idx / x_split;
+                img.view(
+                    (i as u32) * params.sub_width,
+                    (j as u32) * params.sub_height,
+                    params.sub_width,
+                    params.sub_height,
+                )
+            })
+            .collect();
+
+        let matrix = |dir: similarity::Direction| -> Vec<u32> {
+            (0..n * n)
+                .into_par_iter()
+                .map(|k| {
+                    let (a, b) = (k / n, k % n);
+                    if a == b {
+                        return 0;
+                    }
+                    // Each cost is a sum of one border (at most 1020 * tile side),
+                    // so it fits in u32 for any image this tool can handle.
+                    u32::try_from(similarity::compute_border_abs_diff(&*tiles[a], &*tiles[b], dir))
+                        .expect("border cost does not fit in u32")
+                })
+                .collect()
+        };
+
+        Self {
+            n,
+            right: matrix(similarity::Direction::Right),
+            down: matrix(similarity::Direction::Down),
+        }
+    }
+
+    /// Sums the border costs of all adjacent pairs in a full arrangement.
+    /// `indices[pos]` is the tile id placed at row-major position `pos`.
+    fn total(&self, indices: &[usize], x_split: usize) -> u64 {
+        let n = self.n;
+        let mut sum = 0_u64;
+        for (pos, &a) in indices.iter().enumerate() {
+            let x = pos % x_split;
+            let y = pos / x_split;
+            if x + 1 < x_split {
+                sum += u64::from(self.right[a * n + indices[pos + 1]]);
+            }
+            if (y + 1) * x_split < indices.len() {
+                sum += u64::from(self.down[a * n + indices[pos + x_split]]);
+            }
+        }
+        sum
+    }
+}
+
 impl SnsImpl {
     pub fn new(x_split: NonZeroU32, y_split: NonZeroU32) -> Self {
         let total_splits = (x_split.get() * y_split.get()) as usize;
@@ -89,135 +159,45 @@ impl SnsImpl {
             sub_height,
         })
     }
-    fn compute_total_abs_diff(
-        &self,
-        img: &RgbaImage,
-        indices: &[usize],
-        params: &DimensionParams,
-    ) -> u64 {
-        let gen_view = |idx| {
-            let x_split = self.x_split as usize;
-            let i = idx % x_split;
-            let j = idx / x_split;
-            img.view(
-                (i as u32) * params.sub_width,
-                (j as u32) * params.sub_height,
-                params.sub_width,
-                params.sub_height,
-            )
-        };
-
-        let splits: Vec<_> = indices.iter().copied().map(gen_view).collect();
-
-        let mut similarity = 0;
-        let x_split = self.x_split as usize;
-        let y_split = self.y_split as usize;
-
-        // vertical similarity
-        for x in 0..x_split {
-            for y in 0..(y_split - 1) {
-                let upper = splits[x + y * x_split];
-                let lower = splits[x + (y + 1) * x_split];
-
-                similarity += similarity::compute_border_abs_diff(
-                    &*upper,
-                    &*lower,
-                    similarity::Direction::Down,
-                );
-            }
-        }
-
-        // horizontal similarity
-        for y in 0..y_split {
-            for x in 0..(x_split - 1) {
-                let left = splits[x + y * x_split];
-                let right = splits[x + y * x_split + 1];
-
-                similarity += similarity::compute_border_abs_diff(
-                    &*left,
-                    &*right,
-                    similarity::Direction::Right,
-                );
-            }
-        }
-
-        similarity
-    }
 
     pub fn decode(&self, img: &RgbaImage, params: &DimensionParams) -> Result<Vec<usize>> {
-        let gen_view = |idx| {
-            let x_split = self.x_split as usize;
-            let i = idx % x_split;
-            let j = idx / x_split;
-            img.view(
-                (i as u32) * params.sub_width,
-                (j as u32) * params.sub_height,
-                params.sub_width,
-                params.sub_height,
-            )
-        };
-
-        let splits: Vec<_> = (0..(self.total_splits)).map(gen_view).collect();
-
+        let costs = BorderCosts::new(img, self, params);
+        let n = self.total_splits;
         let x_split = self.x_split as usize;
 
-        let nearest_pair = (0..(self.total_splits))
+        // Greedy placement from each possible start tile. Candidates are scanned
+        // in ascending index order and `min_by_key` keeps the first minimum, so the
+        // result is identical to the earlier per-step computation.
+        let nearest_pair = (0..n)
             .into_par_iter()
             .map(|start| {
-                let mut splits_to_use: Vec<_> = splits.iter().map(Option::Some).collect();
-                let mut indices: Vec<_> = Vec::with_capacity(self.total_splits);
-                for y in 0..(self.y_split as usize) {
-                    for x in 0..(self.x_split as usize) {
-                        if x == 0 && y == 0 {
-                            assert!(splits_to_use[start].is_some());
-                            indices.push(start);
-                            splits_to_use[start] = None;
-                        } else if x == 0 {
-                            let nearest_idx = splits_to_use
-                                .iter()
-                                .enumerate()
-                                .filter(|(_, o)| o.is_some())
-                                .map(|(idx, opt)| (idx, opt.unwrap()))
-                                .min_by_key(|(_, split)| {
-                                    // compare with the upper split
-                                    similarity::compute_border_abs_diff(
-                                        &*splits[indices[(y - 1) * x_split]],
-                                        *split,
-                                        similarity::Direction::Down,
-                                    )
-                                })
-                                .unwrap()
-                                .0;
+                let mut used = vec![false; n];
+                let mut indices: Vec<usize> = Vec::with_capacity(n);
+                used[start] = true;
+                indices.push(start);
 
-                            assert!(splits_to_use[nearest_idx].is_some());
-                            indices.push(nearest_idx);
-                            splits_to_use[nearest_idx] = None;
-                        } else {
-                            let nearest_idx = splits_to_use
-                                .iter()
-                                .enumerate()
-                                .filter(|(_, o)| o.is_some())
-                                .map(|(idx, opt)| (idx, opt.unwrap()))
-                                .min_by_key(|(_, split)| {
-                                    // compare with the left split
-                                    similarity::compute_border_abs_diff(
-                                        &*splits[indices[(x - 1) + y * x_split]],
-                                        *split,
-                                        similarity::Direction::Right,
-                                    )
-                                })
-                                .unwrap()
-                                .0;
-
-                            assert!(splits_to_use[nearest_idx].is_some());
-                            indices.push(nearest_idx);
-                            splits_to_use[nearest_idx] = None;
-                        }
-                    }
+                for pos in 1..n {
+                    let x = pos % x_split;
+                    let next = if x == 0 {
+                        // First column: compare with the tile above.
+                        let upper = indices[pos - x_split];
+                        (0..n)
+                            .filter(|&c| !used[c])
+                            .min_by_key(|&c| costs.down[upper * n + c])
+                            .unwrap()
+                    } else {
+                        // Other columns: compare with the tile on the left.
+                        let left = indices[pos - 1];
+                        (0..n)
+                            .filter(|&c| !used[c])
+                            .min_by_key(|&c| costs.right[left * n + c])
+                            .unwrap()
+                    };
+                    used[next] = true;
+                    indices.push(next);
                 }
 
-                let abs_diff = self.compute_total_abs_diff(img, &indices, params);
-
+                let abs_diff = costs.total(&indices, x_split);
                 (indices, abs_diff)
             })
             .min_by_key(|(_, s)| *s)

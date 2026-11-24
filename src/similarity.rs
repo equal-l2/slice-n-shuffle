@@ -1,5 +1,6 @@
 use image::{GenericImageView, Pixel};
 
+#[derive(Clone, Copy)]
 pub(crate) enum Direction {
     Up,
     Down,
