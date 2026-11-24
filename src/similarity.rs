@@ -42,7 +42,7 @@ where
             let my_pixel = a.2.channels();
             let their_pixel = b.2.channels();
             std::iter::zip(my_pixel.iter(), their_pixel.iter())
-                .map(|(a, b)| (u64::from(a.abs_diff(*b))))
+                .map(|(a, b)| u64::from(a.abs_diff(*b)))
                 .sum::<u64>()
         })
         .sum::<u64>()
