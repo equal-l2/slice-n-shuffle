@@ -7,7 +7,7 @@ use rand_xoshiro::SplitMix64 as TheRng;
 
 fn init_rng() -> TheRng {
     let mut buf = [0; 8];
-    getrandom::getrandom(&mut buf).unwrap();
+    getrandom::fill(&mut buf).unwrap();
     TheRng::from_seed(buf)
 }
 
