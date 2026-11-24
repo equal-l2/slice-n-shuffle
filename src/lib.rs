@@ -45,7 +45,7 @@ mod wasm_fn {
         y_split: u32,
     ) -> Result<(NonZeroU32, NonZeroU32), JsValue> {
         let x_split = NonZeroU32::new(x_split).ok_or("x_split must be a non-zero number")?;
-        let y_split = NonZeroU32::new(y_split).ok_or("x_split must be a non-zero number")?;
+        let y_split = NonZeroU32::new(y_split).ok_or("y_split must be a non-zero number")?;
         Ok((x_split, y_split))
     }
 

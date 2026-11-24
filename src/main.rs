@@ -164,7 +164,6 @@ fn decode(args: Args) -> Result<()> {
     eprintln!("To: \"{output}\"");
 
     let img = load_image(&input, crop)?;
-    img.save("out.png").unwrap();
 
     slice_n_shuffle::decode_image(&img, args.x_split, args.y_split)?
         .save(output)
